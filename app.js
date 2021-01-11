@@ -9,35 +9,6 @@ const app = new App({
 
 
 // All the room in the world for your code
-
-async function findConversation(name) {
-  try {
-    // Call the conversations.list method using the built-in WebClient
-    const result = await app.client.conversations.list({
-      // The token you used to initialize your app
-      token: process.env.SLACK_BOT_TOKEN
-    });
-
-    for (const channel of result.channels) {
-      if (channel.name === name) {
-        conversationId = channel.id;
-
-        // Print result
-        console.log("Found conversation ID: " + conversationId);
-        // Break from for loop
-        break;
-      }
-    }
-  }
-  catch (error) {
-    console.error(error);
-  }
-}
-
-// // Find conversation with a specified channel `name`
-findConversation("slackbot-project");
-
-
 app.event('app_home_opened', async ({ event, client, context }) => {
   try {
     /* view.publish is the method that your app uses to push a view to the Home tab */
@@ -90,6 +61,55 @@ app.event('app_home_opened', async ({ event, client, context }) => {
     console.error(error);
   }
 });
+
+async function findConversation(name) {
+  try {
+    // Call the conversations.list method using the built-in WebClient
+    const result = await app.client.conversations.list({
+      // The token you used to initialize your app
+      token: process.env.SLACK_BOT_TOKEN
+    });
+
+    for (const channel of result.channels) {
+      if (channel.name === name) {
+        const conversationId = await channel.id;
+
+        // Print result
+        console.log("Found conversation ID: " + conversationId);
+        return conversationId;
+      }
+    }
+  }
+  catch (error) {
+    console.error(error);
+  }
+}
+
+// // Find conversation with a specified channel `name`
+const channel = findConversation("slackbot-project");
+
+async function publishMessage(id, text) {
+  try {
+    // Call the chat.postMessage method using the built-in WebClient
+    const result = await app.client.chat.postMessage({
+      // The token you used to initialize your app
+      token: process.env.SLACK_BOT_TOKEN,
+      channel: id,
+      text: text
+      // You could also use a blocks[] array to send richer content
+    });
+
+    // Print result, which includes information about the message (like TS)
+    console.log(result);
+  }
+  catch (error) {
+    console.error(error);
+  }
+}
+
+console.log('channel', channel)
+
+publishMessage(channel, "Hello world :tada:");
 
 
 (async () => {
