@@ -7,18 +7,6 @@ const app = new App({
   signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 
-
-const oauth2Client = new google.auth.OAuth2(
-  YOUR_CLIENT_ID,
-  YOUR_CLIENT_SECRET,
-  YOUR_REDIRECT_URL
-);
-
-const url = oauth2Client.generateAuthUrl({
-  scope: 'https://www.googleapis.com/auth/calendar'
-});
-
-
 // All the room in the world for your code
 app.event('app_home_opened', async ({ event, client, context }) => {
   try {
@@ -129,21 +117,25 @@ app.event('app_mention', async ({ event }) => {
 'help']
 
     if (hrTopics.some(r => text.split(' ').includes(r))) {
-	    const combined = [hrTopics, text.split(' ')].reduce();
+	    const combined = [hrTopics, text.split(' ')].flat();
 	    const word = combined.filter((w, i) => combined.indexOf(w) !== i && w)
 	    if (word == 'sick') {
 		    if (text.includes('many')) {
           publishMessage('hrbot-tests', 'Sick days left')
 		    } else if (text.includes('set')) {
           publishMessage('hrbot-tests', 'Set a sick day')
-		    }
+		    } else {
+          publishMessage('hrbot-tests', 'You can see how many sick days you have left or set a sick day by asking me')
+        }
 	    }
 	    else if (word == 'vacation') {
 		    if (text.includes('many')) {
           publishMessage('hrbot-tests', 'Vacation days left')
 		  } else if (text.includes('set')) {
           publishMessage('hrbot-tests', 'Set a vacation day')
-		  }
+		  } else {
+          publishMessage('hrbot-tests', 'You can see how many vacation days you have left or set a vacation day by asking me')
+        }
 	}
 	else if (word == 'holiday' | word == 'holidays') {
     publishMessage('hrbot-tests', 'Holidays')
@@ -160,7 +152,7 @@ app.event('app_mention', async ({ event }) => {
 	else if (word == 'poke') {
     publishMessage('hrbot-tests', 'poke')
   }} else {
-	  publishMessage('hrbot-tests', 'Sorry, I may not be able to help you with that. Try asking me something about... ${hrTopics}"');
+	  publishMessage('hrbot-tests', `Sorry, I may not be able to help you with that. Try asking me something about... ${hrTopics}`);
   }
   }
   catch (error) {
