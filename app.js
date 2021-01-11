@@ -106,9 +106,17 @@ async function publishMessage(channel, text) {
   }
 }
 
-publishMessage('hrbot-tests', 'Mic test 123');
+// publishMessage('hrbot-tests', 'Mic test 123');
 
-
+app.event('app_mention', async () => {
+  try {
+    console.log('hey');
+    publishMessage('hrbot-tests', 'Mic test 123')
+  }
+  catch (error) {
+    console.error(error);
+  }
+});
 
 
 (async () => {
