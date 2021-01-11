@@ -108,10 +108,19 @@ async function publishMessage(channel, text) {
 
 // publishMessage('hrbot-tests', 'Mic test 123');
 
-app.event('app_mention', async () => {
+app.event('app_mention', async ({ event }) => {
   try {
-    console.log('hey');
-    publishMessage('hrbot-tests', 'Mic test 123')
+    const {text, user} = event;
+    console.log('event', event);
+    console.log('text', event.text);
+    console.log('user', event.user);
+    if (text === '<@U01JEQDKY9H> how many sick days do I have left') {
+      publishMessage('hrbot-tests', 'Sick days')
+    } else if (text === '<@U01JEQDKY9H> how many vacation days do I have left') {
+      publishMessage('hrbot-tests', 'Vacation days')
+    } else {
+      publishMessage('hrbot-tests', 'Sorry, we dont know the answer to that. Try `how many sick days do I have left` or `how many vacation days do I have left`')
+    }
   }
   catch (error) {
     console.error(error);
