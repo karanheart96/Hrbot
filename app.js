@@ -125,13 +125,43 @@ app.event('app_mention', async ({ event }) => {
     console.log('event', event);
     console.log('text', event.text);
     console.log('user', event.user);
-    if (text === '<@U01JEQDKY9H> how many sick days do I have left') {
-      publishMessage('hrbot-tests', 'Sick days')
-    } else if (text === '<@U01JEQDKY9H> how many vacation days do I have left') {
-      publishMessage('hrbot-tests', 'Vacation days')
-    } else {
-      publishMessage('hrbot-tests', 'Sorry, we dont know the answer to that. Try `how many sick days do I have left` or `how many vacation days do I have left`')
-    }
+    const hrTopics = ['sick', 'vacation', 'holidays', 'holiday', 'birthday', 'poke', 'tea', 'time', 'paymo', 
+'help']
+
+    if (hrTopics.some(r => text.split(' ').includes(r))) {
+	    const combined = [hrTopics, text.split(' ')].reduce();
+	    const word = combined.filter((w, i) => combined.indexOf(w) !== i && w)
+	    if (word == 'sick') {
+		    if (text.includes('many')) {
+          publishMessage('hrbot-tests', 'Sick days left')
+		    } else if (text.includes('set')) {
+          publishMessage('hrbot-tests', 'Set a sick day')
+		    }
+	    }
+	    else if (word == 'vacation') {
+		    if (text.includes('many')) {
+          publishMessage('hrbot-tests', 'Vacation days left')
+		  } else if (text.includes('set')) {
+          publishMessage('hrbot-tests', 'Set a vacation day')
+		  }
+	}
+	else if (word == 'holiday' | word == 'holidays') {
+    publishMessage('hrbot-tests', 'Holidays')
+  }
+	else if (word == 'birthday') {
+    publishMessage('hrbot-tests', 'Birthdays')
+  }
+	else if (word == 'tea') {
+    publishMessage('hrbot-tests', 'Tea')
+  }
+	else if (word == 'time' || word == 'paymo' || word == 'hours') {
+    publishMessage('hrbot-tests', 'Paymo')
+  }
+	else if (word == 'poke') {
+    publishMessage('hrbot-tests', 'poke')
+  }} else {
+	  publishMessage('hrbot-tests', 'Sorry, I may not be able to help you with that. Try asking me something about... ${hrTopics}"');
+  }
   }
   catch (error) {
     console.error(error);
