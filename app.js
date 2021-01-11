@@ -76,6 +76,7 @@ async function findConversation(name) {
 
         // Print result
         console.log("Found conversation ID: " + conversationId);
+        
         return conversationId;
       }
     }
@@ -85,16 +86,14 @@ async function findConversation(name) {
   }
 }
 
-// // Find conversation with a specified channel `name`
-const channel = findConversation("slackbot-project");
-
-async function publishMessage(id, text) {
+async function publishMessage(channel, text) {
   try {
     // Call the chat.postMessage method using the built-in WebClient
+    const foundChannel = await findConversation(channel)
     const result = await app.client.chat.postMessage({
       // The token you used to initialize your app
       token: process.env.SLACK_BOT_TOKEN,
-      channel: id,
+      channel: foundChannel,
       text: text
       // You could also use a blocks[] array to send richer content
     });
@@ -107,9 +106,9 @@ async function publishMessage(id, text) {
   }
 }
 
-console.log('channel', channel)
+publishMessage('hrbot-tests', 'Mic test 123');
 
-publishMessage(channel, "Hello world :tada:");
+
 
 
 (async () => {
