@@ -9,6 +9,35 @@ const app = new App({
 
 
 // All the room in the world for your code
+
+async function findConversation(name) {
+  try {
+    // Call the conversations.list method using the built-in WebClient
+    const result = await app.client.conversations.list({
+      // The token you used to initialize your app
+      token: process.env.SLACK_BOT_TOKEN
+    });
+
+    for (const channel of result.channels) {
+      if (channel.name === name) {
+        conversationId = channel.id;
+
+        // Print result
+        console.log("Found conversation ID: " + conversationId);
+        // Break from for loop
+        break;
+      }
+    }
+  }
+  catch (error) {
+    console.error(error);
+  }
+}
+
+// // Find conversation with a specified channel `name`
+findConversation("slackbot-project");
+
+
 app.event('app_home_opened', async ({ event, client, context }) => {
   try {
     /* view.publish is the method that your app uses to push a view to the Home tab */
