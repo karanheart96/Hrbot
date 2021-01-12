@@ -5,10 +5,10 @@ const { WebClient, LogLevel, } = require("@slack/web-api");
 const {google} = require('googleapis');
 
 // Insufficient permissions issue. Making the google sheet public because it takes 24 hours to fix
-// const auth = new google.auth.GoogleAuth({
-//   keyFile: 'credentials.json',
-//   scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-// })
+const auth = new google.auth.GoogleAuth({
+  keyFile: 'credentials.json',
+  scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+})
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -177,29 +177,29 @@ app.event('app_mention', async ({ event }) => {
  * @see https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
  * @param {google.auth.OAuth2} auth The authenticated Google OAuth client.
  */
-function listMajors() {
-  const sheets = google.sheets({version: 'v4'});
-  sheets.spreadsheets.values.get({
-    spreadsheetId: process.env.SPREADSHEET_ID,
-    range: 'Class Data!A2:E',
-    key: process.env.API_KEY
-  }, (err, res) => {
-    if (err) return console.log('The API returned an error: ' + err);
-    const rows = res.data.values;
-    if (rows.length) {
-      console.log('Name, Major:');
-      // Print columns A and E, which correspond to indices 0 and 4.
-      rows.map((row) => {
-        console.log(`${row[0]}, ${row[4]}`);
-      });
-    } else {
-      console.log('No data found.');
-    }
-  });
-}
+// function listMajors() {
+//   const sheets = google.sheets({version: 'v4'});
+//   sheets.spreadsheets.values.get({
+//     spreadsheetId: process.env.SPREADSHEET_ID,
+//     range: 'Class Data!A2:E',
+//     key: process.env.API_KEY
+//   }, (err, res) => {
+//     if (err) return console.log('The API returned an error: ' + err);
+//     const rows = res.data.values;
+//     if (rows.length) {
+//       console.log('Name, Major:');
+//       // Print columns A and E, which correspond to indices 0 and 4.
+//       rows.map((row) => {
+//         console.log(`${row[0]}, ${row[4]}`);
+//       });
+//     } else {
+//       console.log('No data found.');
+//     }
+//   });
+// }
 
 function getName() {
-  const sheets = google.sheets({version: 'v4', auth: apiKey});
+  const sheets = google.sheets({version: 'v4', auth});
   sheets.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
     range: '2020 Staff Vacations!A5',
