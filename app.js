@@ -5,10 +5,10 @@ const { WebClient, LogLevel, } = require("@slack/web-api");
 const {google} = require('googleapis');
 
 // Insufficient permissions issue. Making the google sheet public because it takes 24 hours to fix
-const auth = new google.auth.GoogleAuth({
-  keyFile: 'credentials.json',
-  scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-})
+// const auth = new google.auth.GoogleAuth({
+//   keyFile: 'credentials.json',
+//   scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+// })
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
