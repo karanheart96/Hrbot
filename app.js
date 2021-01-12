@@ -1,6 +1,6 @@
 // Require the Bolt package (github.com/slackapi/bolt)
 const { App } = require("@slack/bolt");
-const { WebClient, LogLevel } = require("@slack/web-api");
+const { WebClient, LogLevel, } = require("@slack/web-api");
 
 const {google} = require('googleapis');
 
@@ -15,11 +15,7 @@ const app = new App({
   signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 
-const client = new WebClient({
-  token: process.env.SLACK_BOT_TOKEN,
-  // LogLevel can be imported and used to make debugging simpler
-  logLevel: LogLevel.DEBUG
-});
+const client = new WebClient();
 
 const spreadsheetId = '1X-503RbzfMhGhNoyyNe_Vu4R0c-c03r249YobxZ6OPM';
 const apiKey = 'AIzaSyAGrbR6jSnhK8X_zkb3XH29PS3ag35pJGE';
@@ -225,5 +221,5 @@ getName();
   await app.start(process.env.PORT || 3000);
 
   console.log('⚡️ Bolt app is running!');
-  console.log(auth.test())
+  console.log('here', await client.auth.test({token: process.env.SLACK_BOT_TOKEN}))
 })();
