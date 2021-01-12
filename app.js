@@ -7,6 +7,9 @@ const app = new App({
   signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 
+const spreadsheetId = '1X-503RbzfMhGhNoyyNe_Vu4R0c-c03r249YobxZ6OPM';
+const apiKey = 'AIzaSyAGrbR6jSnhK8X_zkb3XH29PS3ag35pJGE';
+
 // All the room in the world for your code
 app.event('app_home_opened', async ({ event, client, context }) => {
   try {
@@ -188,21 +191,21 @@ function listMajors() {
 
 function getName() {
   const sheets = google.sheets({version: 'v4'});
-  sheets.spreadsheet.values.get({
-    spreadsheetId: process.env.SPREADSHEET_ID,
+  sheets.spreadsheets.values.get({
+    spreadsheetId: spreadsheetId,
     range: '2020 Staff Vacations!A5:E',
-    key: process.env.API_KEY
+    key: apiKey
   }, (err, res) => {
     if (err) {return console.log('You are an idiot: ' + err)}
     return res.data;
   })
 }
 
+getName();
 
 (async () => {
   // Start your app
   await app.start(process.env.PORT || 3000);
 
   console.log('⚡️ Bolt app is running!');
-  console.log(getName());
 })();
