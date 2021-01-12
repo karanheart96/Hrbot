@@ -168,9 +168,9 @@ app.event('app_mention', async ({ event }) => {
 function listMajors() {
   const sheets = google.sheets({version: 'v4'});
   sheets.spreadsheets.values.get({
-    spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    spreadsheetId: process.env.SPREADSHEET_ID,
     range: 'Class Data!A2:E',
-    key: 'AIzaSyAGrbR6jSnhK8X_zkb3XH29PS3ag35pJGE'
+    key: process.env.API_KEY
   }, (err, res) => {
     if (err) return console.log('The API returned an error: ' + err);
     const rows = res.data.values;
@@ -186,11 +186,23 @@ function listMajors() {
   });
 }
 
+function getName() {
+  const sheets = google.sheets({version: 'v4'});
+  sheets.spreadsheet.values.get({
+    spreadsheetId: process.env.SPREADSHEET_ID,
+    range: '2020 Staff Vacations!A5:E',
+    key: process.env.API_KEY
+  }, (err, res) => {
+    if (err) {return console.log('You are an idiot: ' + err)}
+    return res.data;
+  })
+}
+
 
 (async () => {
   // Start your app
   await app.start(process.env.PORT || 3000);
 
   console.log('⚡️ Bolt app is running!');
-  console.log('majors', listMajors());
+  console.log(getName());
 })();
