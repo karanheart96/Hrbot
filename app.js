@@ -189,6 +189,7 @@ function authorize(credentials, callback) {
       client_id, client_secret, redirect_uris[0]);
 
   // Check if we have previously stored a token.
+  console.log('here', getNewToken(oAuth2Client, callback))
   fs.readFile(TOKEN_PATH, (err, token) => {
     if (err) return getNewToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token));
