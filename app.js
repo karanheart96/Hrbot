@@ -118,9 +118,7 @@ async function publishMessage(channel, text) {
     console.log(result);
     
     console.log('hohoho', 
-      await client.users.info(
-        user = result.user
-    ));
+      await client.users.info({user: result.user}));
   }
   catch (error) {
     console.error(error);
@@ -227,4 +225,5 @@ getName();
   await app.start(process.env.PORT || 3000);
 
   console.log('⚡️ Bolt app is running!');
+  console.log(auth.test())
 })();
