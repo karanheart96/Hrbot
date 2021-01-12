@@ -2,6 +2,11 @@
 const { App } = require("@slack/bolt");
 const {google} = require('googleapis');
 
+const auth = new google.auth.GoogleAuth({
+  keyFile: 'credentials.json',
+  scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+})
+
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET
@@ -190,14 +195,13 @@ function listMajors() {
 }
 
 function getName() {
-  const sheets = google.sheets({version: 'v4'});
+  const sheets = google.sheets({version: 'v4', auth: auth});
   sheets.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
     range: '2020 Staff Vacations!A5:E',
-    key: apiKey
   }, (err, res) => {
     if (err) {return console.log('You are an idiot: ' + err)}
-    return res.data;
+    return res.data
   })
 }
 
