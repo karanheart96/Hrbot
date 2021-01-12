@@ -109,12 +109,6 @@ async function publishMessage(channel, text) {
       text: text
       // You could also use a blocks[] array to send richer content
     });
-
-    // Print result, which includes information about the message (like TS)
-    console.log(result);
-    
-    console.log('hohoho', 
-      await client.users.info({user: result.user}));
   }
   catch (error) {
     console.error(error);
@@ -129,6 +123,8 @@ app.event('app_mention', async ({ event }) => {
     console.log('event', event);
     console.log('text', event.text);
     console.log('user', event.user);
+    console.log('hohoho', 
+      await client.users.info({user: event.user, token: process.env.SLACK_BOT_TOKEN}));
     const hrTopics = ['sick', 'vacation', 'holidays', 'holiday', 'birthday', 'poke', 'tea', 'time', 'paymo', 
 'help']
 
@@ -221,5 +217,5 @@ getName();
   await app.start(process.env.PORT || 3000);
 
   console.log('⚡️ Bolt app is running!');
-  console.log('here', await client.auth.test({token: process.env.SLACK_BOT_TOKEN}))
+  console.log('here', await client.users.list({token: process.env.SLACK_BOT_TOKEN}))
 })();
