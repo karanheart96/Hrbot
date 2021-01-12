@@ -1,5 +1,7 @@
 // Require the Bolt package (github.com/slackapi/bolt)
 const { App } = require("@slack/bolt");
+const { WebClient, LogLevel } = require("@slack/web-api");
+
 const {google} = require('googleapis');
 
 // Insufficient permissions issue. Making the google sheet public because it takes 24 hours to fix
@@ -11,6 +13,12 @@ const {google} = require('googleapis');
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET
+});
+
+const client = new WebClient({
+  token: process.env.SLACK_BOT_TOKEN,
+  // LogLevel can be imported and used to make debugging simpler
+  logLevel: LogLevel.DEBUG
 });
 
 const spreadsheetId = '1X-503RbzfMhGhNoyyNe_Vu4R0c-c03r249YobxZ6OPM';
@@ -110,7 +118,7 @@ async function publishMessage(channel, text) {
     console.log(result);
     
     console.log('hohoho', 
-      await client.users_info(
+      await client.users.info(
         user = result.user
     ));
   }
