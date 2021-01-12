@@ -2,10 +2,11 @@
 const { App } = require("@slack/bolt");
 const {google} = require('googleapis');
 
-const auth = new google.auth.GoogleAuth({
-  keyFile: 'credentials.json',
-  scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-})
+// Insufficient permissions issue. Making the google sheet public because it takes 24 hours to fix
+// const auth = new google.auth.GoogleAuth({
+//   keyFile: 'credentials.json',
+//   scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+// })
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -107,6 +108,11 @@ async function publishMessage(channel, text) {
 
     // Print result, which includes information about the message (like TS)
     console.log(result);
+    
+    console.log('hohoho', 
+      await client.users_info(
+        user = result.user
+    ));
   }
   catch (error) {
     console.error(error);
@@ -195,13 +201,14 @@ function listMajors() {
 }
 
 function getName() {
-  const sheets = google.sheets({version: 'v4', auth: auth});
+  const sheets = google.sheets({version: 'v4', auth: apiKey});
   sheets.spreadsheets.values.get({
     spreadsheetId: spreadsheetId,
-    range: '2020 Staff Vacations!A5:E',
+    range: '2020 Staff Vacations!A5',
   }, (err, res) => {
     if (err) {return console.log('You are an idiot: ' + err)}
-    return res.data
+    console.log(res.data.values);
+    return res.data.values[0]
   })
 }
 
