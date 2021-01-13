@@ -11,6 +11,7 @@ const {
 const {
   _
 } = require("lodash");
+const request = require("request");
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -77,34 +78,10 @@ async function getAllData(realName) {
     spreadsheetId: spreadsheetId,
     range: "2020 Staff Vacations!A5:F16"
   });
-
-  // console.log('yo', sheets.spreadsheets.values.get(
-  //   {
-  //     spreadsheetId: spreadsheetId,
-  //     range: "2020 Staff Vacations!A5:F16"
-  //   },
-  //   (err, res) => {
-  //     if (err) {
-  //       return console.log("You are an idiot: " + err);
-  //     }
-  //     return res.data.values;
-  //   }
-  // ));
   return data;
 }
 
 async function getRow(realName) {
-  // const sheets = google.sheets({ version: "v4", auth });
-  // sheets.spreadsheets.get({
-  //   spreadsheetId: spreadsheetId,
-  // }, (err, res) => {
-  //     if (err) {
-  //       return console.log("You are an idiot 2: " + err);
-  //     }
-  //     // console.log(res.data);
-  //     // console.log('here', _.find(res.data.sheets, {properties: {'title': '2020 Staff Vacations'}}, null).values);
-  //     // return res.data.values[0];
-  //   })
   const allData = await getAllData(realName);
   const row = allData.data.values.filter(arr => arr[0].includes(realName));
   return row.flat();
@@ -161,6 +138,7 @@ app.event("app_mention", async ({
       "tea",
       "time",
       "paymo",
+      "timesheet",
       "help",
       "me"
     ];
@@ -217,6 +195,104 @@ app.event("app_mention", async ({
         publishMessage("hrbot-tests", "Paymo");
       } else if (word == "poke") {
         publishMessage("hrbot-tests", "poke");
+      } else if (word == "paymo" || word == "Paymo") {
+        // Paymo!
+        let {
+          user: userInfo
+        } = await client.users.info({
+          user: event.user,
+          token: process.env.SLACK_BOT_TOKEN
+        });
+        request.get(
+          "https://app.paymoapp.com/api/projects", {
+            auth: {
+              user: process.env.PAYMO_API_KEY
+            },
+            headers: {
+              Accept: "application/json"
+            }
+          },
+          (error, response, body) => {
+            if (!error) {
+              // List project names
+              console.log("response:", JSON.parse(body));
+              JSON.parse(body).projects.forEach(project => {
+                request.get(
+                  `https://app.paymoapp.com/api/tasks?where=project_id=${project.id}`, {
+                    auth: {
+                      user: process.env.PAYMO_API_KEY
+                    },
+                    headers: {
+                      Accept: "application/json"
+                    }
+                  },
+                  (error, response, body) => {
+                    if (!error) {
+                      JSON.parse(body).tasks.forEach(task => {
+                        if (task.name.includes(userInfo.real_name)) {
+                          publishMessage(
+                            "hrbot-tests",
+                            `Project: ${project.name} - ${task.name} - taskId: *${task.id}*`
+                          );
+                        }
+                      });
+                    } else {
+                      console.log(error);
+                    }
+                  }
+                );
+              });
+            } else {
+              console.log(error);
+            }
+          }
+        );
+        publishMessage(
+          "hrbot-tests",
+          "To add time to your Paymo timesheet, please type `@kyle-test timesheet | <taskId>`"
+        );
+      } else if (word == "timesheet") {
+        const taskId = text.toLowerCase().substring(text.indexOf("|") + 2);
+        let todayDate = new Date();
+        const dd = String(todayDate.getDate()).padStart(2, "0");
+        const mm = String(todayDate.getMonth() + 1).padStart(2, "0"); //January is 0!
+        const yyyy = todayDate.getFullYear();
+        todayDate = `${yyyy}-${mm}-${dd}`;
+
+        const postData = {
+          task_id: taskId,
+          start_time: `${todayDate}T14:00:00Z`,
+          end_time: `${todayDate}T22:00:00Z`,
+          description: "Time entry created by Slackbot."
+        };
+
+        request.post({
+            url: "https://app.paymoapp.com/api/entries",
+            body: JSON.stringify(postData),
+            headers: {
+              "Content-type": "application/json",
+              Accept: "application/json"
+            },
+            auth: {
+              user: process.env.PAYMO_API_KEY
+            }
+          },
+          (error, response, body) => {
+            if (!error) {
+              console.log("Hours response: ", JSON.parse(body));
+              if (JSON.parse(body).message) {
+                publishMessage("hrbot-tests", `${JSON.parse(body).message}`);
+              } else {
+                publishMessage(
+                  "hrbot-tests",
+                  `${JSON.parse(body).entries[0].description}`
+                );
+              }
+            } else {
+              console.log(error);
+            }
+          }
+        );
       }
     } else {
       publishMessage(
