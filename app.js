@@ -1,221 +1,236 @@
-// Require the Bolt package (github.com/slackapi/bolt)
-const { App } = require("@slack/bolt");
-const { WebClient, LogLevel, } = require("@slack/web-api");
-
-const {google} = require('googleapis');
-
-// Insufficient permissions issue. Making the google sheet public because it takes 24 hours to fix
-// const auth = new google.auth.GoogleAuth({
-//   keyFile: 'credentials.json',
-//   scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-// })
+const {
+  App
+} = require("@slack/bolt");
+const {
+  WebClient,
+  LogLevel
+} = require("@slack/web-api");
+const {
+  google
+} = require("googleapis");
+const {
+  _
+} = require("lodash");
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 
-const client = new WebClient();
+const calendarId =
+  "f1v.co_tthcm1hbtv21rlpaso7pliirmo@group.calendar.google.com";
+const keyFile = "credentials.json";
+const scopes = [
+  "https://www.googleapis.com/auth/calendar",
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/spreadsheets"
+];
 
-const spreadsheetId = '1X-503RbzfMhGhNoyyNe_Vu4R0c-c03r249YobxZ6OPM';
-const apiKey = 'AIzaSyAGrbR6jSnhK8X_zkb3XH29PS3ag35pJGE';
-
-// All the room in the world for your code
-app.event('app_home_opened', async ({ event, client, context }) => {
-  try {
-    /* view.publish is the method that your app uses to push a view to the Home tab */
-    const result = await client.views.publish({
-
-      /* the user that opened your app's app home */
-      user_id: event.user,
-
-      /* the view object that appears in the app home*/
-      view: {
-        type: 'home',
-        callback_id: 'home_view',
-
-        /* body of the view */
-        blocks: [
-          {
-            "type": "section",
-            "text": {
-              "type": "mrkdwn",
-              "text": "*Welcome to your _App's Home_* :tada:"
-            }
-          },
-          {
-            "type": "divider"
-          },
-          {
-            "type": "section",
-            "text": {
-              "type": "mrkdwn",
-              "text": "This button won't do much for now but you can set up a listener for it using the `actions()` method and passing its unique `action_id`. See an example in the `examples` folder within your Bolt app."
-            }
-          },
-          {
-            "type": "actions",
-            "elements": [
-              {
-                "type": "button",
-                "text": {
-                  "type": "plain_text",
-                  "text": "Click me!"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    });
-  }
-  catch (error) {
-    console.error(error);
-  }
+const auth = new google.auth.GoogleAuth({
+  keyFile,
+  scopes
 });
+
+const client = new WebClient();
+const spreadsheetId = "1X-503RbzfMhGhNoyyNe_Vu4R0c-c03r249YobxZ6OPM";
+const apiKey = "AIzaSyAGrbR6jSnhK8X_zkb3XH29PS3ag35pJGE";
+
+const totalSickDays = 5;
+const totalVacationDays = 20;
 
 async function findConversation(name) {
   try {
-    // Call the conversations.list method using the built-in WebClient
     const result = await app.client.conversations.list({
-      // The token you used to initialize your app
       token: process.env.SLACK_BOT_TOKEN
     });
 
     for (const channel of result.channels) {
       if (channel.name === name) {
         const conversationId = await channel.id;
-
-        // Print result
-        console.log("Found conversation ID: " + conversationId);
-        
         return conversationId;
       }
     }
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error);
   }
 }
 
 async function publishMessage(channel, text) {
   try {
-    // Call the chat.postMessage method using the built-in WebClient
-    const foundChannel = await findConversation(channel)
+    const foundChannel = await findConversation(channel);
     const result = await app.client.chat.postMessage({
-      // The token you used to initialize your app
       token: process.env.SLACK_BOT_TOKEN,
       channel: foundChannel,
       text: text
-      // You could also use a blocks[] array to send richer content
     });
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error);
   }
 }
 
-// publishMessage('hrbot-tests', 'Mic test 123');
+async function getAllData(realName) {
+  const sheets = google.sheets({
+    version: "v4",
+    auth
+  });
+  const data = await sheets.spreadsheets.values.get({
+    spreadsheetId: spreadsheetId,
+    range: "2020 Staff Vacations!A5:F16"
+  });
 
-app.event('app_mention', async ({ event }) => {
+  // console.log('yo', sheets.spreadsheets.values.get(
+  //   {
+  //     spreadsheetId: spreadsheetId,
+  //     range: "2020 Staff Vacations!A5:F16"
+  //   },
+  //   (err, res) => {
+  //     if (err) {
+  //       return console.log("You are an idiot: " + err);
+  //     }
+  //     return res.data.values;
+  //   }
+  // ));
+  return data;
+}
+
+async function getRow(realName) {
+  // const sheets = google.sheets({ version: "v4", auth });
+  // sheets.spreadsheets.get({
+  //   spreadsheetId: spreadsheetId,
+  // }, (err, res) => {
+  //     if (err) {
+  //       return console.log("You are an idiot 2: " + err);
+  //     }
+  //     // console.log(res.data);
+  //     // console.log('here', _.find(res.data.sheets, {properties: {'title': '2020 Staff Vacations'}}, null).values);
+  //     // return res.data.values[0];
+  //   })
+  const allData = await getAllData(realName);
+  const row = allData.data.values.filter(arr => arr[0].includes(realName));
+  return row.flat();
+}
+
+async function createEvent(username) {
+  const event = {
+    end: {
+      date: "2021-01-14"
+    },
+    start: {
+      date: "2021-01-14"
+    },
+    description: "Covid 19",
+    summary: `${username} - Sick Leave`
+  };
+  const calendar = google.calendar({
+    version: "v3",
+    auth
+  });
+  calendar.events.insert({
+      auth,
+      calendarId,
+      resource: event
+    },
+    function (err, event) {
+      if (err) {
+        console.log(
+          "There was an error contacting the Calendar service: " + err
+        );
+        return;
+      }
+      console.log("Event created yo");
+    }
+  );
+}
+
+app.event("app_mention", async ({
+  event
+}) => {
   try {
-    const {text, user} = event;
-    console.log('event', event);
-    console.log('text', event.text);
-    console.log('user', event.user);
-    console.log('hohoho', 
-      await client.users.info({user: event.user, token: process.env.SLACK_BOT_TOKEN}));
-    const hrTopics = ['sick', 'vacation', 'holidays', 'holiday', 'birthday', 'poke', 'tea', 'time', 'paymo', 
-'help']
+    const {
+      text,
+      user
+    } = event;
 
-    if (hrTopics.some(r => text.split(' ').includes(r))) {
-	    const combined = [hrTopics, text.split(' ')].flat();
-	    const word = combined.filter((w, i) => combined.indexOf(w) !== i && w)
-	    if (word == 'sick') {
-		    if (text.includes('many')) {
-          publishMessage('hrbot-tests', 'Sick days left')
-		    } else if (text.includes('set')) {
-          publishMessage('hrbot-tests', 'Set a sick day')
-		    } else {
-          publishMessage('hrbot-tests', 'You can see how many sick days you have left or set a sick day by asking me')
+    const hrTopics = [
+      "sick",
+      "vacation",
+      "holidays",
+      "holiday",
+      "birthday",
+      "poke",
+      "tea",
+      "time",
+      "paymo",
+      "help",
+      "me"
+    ];
+
+    if (hrTopics.some(r => text.split(" ").includes(r))) {
+      const combined = [hrTopics, text.split(" ")].flat();
+      const word = combined.filter((w, i) => combined.indexOf(w) !== i && w);
+      const author = await client.users.info({
+        user: event.user,
+        token: process.env.SLACK_BOT_TOKEN
+      });
+      const username = author.user.profile.real_name;
+
+      if (word == "me") {
+        publishMessage("hrbot-tests", `author: ${username}`);
+      } else if (word == "sick") {
+        if (text.includes("many")) {
+          const row = await getRow(username);
+          publishMessage(
+            "hrbot-tests",
+            `You have ${totalSickDays - row[5]} sick day(s) remaining`
+          );
+        } else if (text.includes("set")) {
+          await createEvent(username);
+          publishMessage("hrbot-tests", "Your sick day has been set");
+        } else {
+          publishMessage(
+            "hrbot-tests",
+            "You can see how many sick days you have left or set a sick day by asking me"
+          );
         }
-	    }
-	    else if (word == 'vacation') {
-		    if (text.includes('many')) {
-          publishMessage('hrbot-tests', 'Vacation days left')
-		  } else if (text.includes('set')) {
-          publishMessage('hrbot-tests', 'Set a vacation day')
-		  } else {
-          publishMessage('hrbot-tests', 'You can see how many vacation days you have left or set a vacation day by asking me')
+      } else if (word == "vacation") {
+        if (text.includes("many")) {
+          const row = await getRow(username);
+          publishMessage(
+            "hrbot-tests",
+            `You have ${totalVacationDays - row[4]} vacation day(s) remaining`
+          );
+        } else if (text.includes("set")) {
+          publishMessage("hrbot-tests", "Set a vacation day");
+        } else {
+          publishMessage(
+            "hrbot-tests",
+            "You can see how many vacation days you have left or set a vacation day by asking me"
+          );
         }
-	}
-	else if (word == 'holiday' | word == 'holidays') {
-    publishMessage('hrbot-tests', 'Holidays')
-  }
-	else if (word == 'birthday') {
-    publishMessage('hrbot-tests', 'Birthdays')
-  }
-	else if (word == 'tea') {
-    publishMessage('hrbot-tests', 'Tea')
-  }
-	else if (word == 'time' || word == 'paymo' || word == 'hours') {
-    publishMessage('hrbot-tests', 'Paymo')
-  }
-	else if (word == 'poke') {
-    publishMessage('hrbot-tests', 'poke')
-  }} else {
-	  publishMessage('hrbot-tests', `Sorry, I may not be able to help you with that. Try asking me something about... ${hrTopics}`);
-  }
-  }
-  catch (error) {
+      } else if ((word == "holiday") | (word == "holidays")) {
+        publishMessage("hrbot-tests", "Holidays");
+      } else if (word == "birthday") {
+        publishMessage("hrbot-tests", "Birthdays");
+      } else if (word == "tea") {
+        publishMessage("hrbot-tests", "Tea");
+      } else if (word == "time" || word == "paymo" || word == "hours") {
+        publishMessage("hrbot-tests", "Paymo");
+      } else if (word == "poke") {
+        publishMessage("hrbot-tests", "poke");
+      }
+    } else {
+      publishMessage(
+        "hrbot-tests",
+        `Sorry, I may not be able to help you with that. Try asking me something about... ${hrTopics}`
+      );
+    }
+  } catch (error) {
     console.error(error);
   }
 });
 
-/**
- * Prints the names and majors of students in a sample spreadsheet:
- * @see https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
- * @param {google.auth.OAuth2} auth The authenticated Google OAuth client.
- */
-// function listMajors() {
-//   const sheets = google.sheets({version: 'v4'});
-//   sheets.spreadsheets.values.get({
-//     spreadsheetId: process.env.SPREADSHEET_ID,
-//     range: 'Class Data!A2:E',
-//     key: process.env.API_KEY
-//   }, (err, res) => {
-//     if (err) return console.log('The API returned an error: ' + err);
-//     const rows = res.data.values;
-//     if (rows.length) {
-//       console.log('Name, Major:');
-//       // Print columns A and E, which correspond to indices 0 and 4.
-//       rows.map((row) => {
-//         console.log(`${row[0]}, ${row[4]}`);
-//       });
-//     } else {
-//       console.log('No data found.');
-//     }
-//   });
-// }
-
-function getName() {
-  const sheets = google.sheets({version: 'v4', auth});
-  sheets.spreadsheets.values.get({
-    spreadsheetId: spreadsheetId,
-    range: '2020 Staff Vacations!A5',
-  }, (err, res) => {
-    if (err) {return console.log('You are an idiot: ' + err)}
-    console.log(res.data.values);
-    return res.data.values[0]
-  })
-}
-
-getName();
-
 (async () => {
-  // Start your app
   await app.start(process.env.PORT || 3000);
 
-  console.log('⚡️ Bolt app is running!');
-  console.log('here', await client.users.list({token: process.env.SLACK_BOT_TOKEN}))
+  console.log("⚡️ Bolt app is running!");
 })();
