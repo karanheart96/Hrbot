@@ -2,8 +2,7 @@ const {
   App
 } = require("@slack/bolt");
 const {
-  WebClient,
-  LogLevel
+  WebClient
 } = require("@slack/web-api");
 const {
   google
@@ -11,14 +10,26 @@ const {
 const {
   _
 } = require("lodash");
+const request = require("request");
+const {
+  requestPaymo,
+  requestHours,
+  requestTimesheet
+} = require("./paymo");
+const {
+  getSickDays,
+  getVacationDays
+} = require("./gSheet");
+const {
+  createSickDayEvent,
+  createVacationDayEvent
+} = require("./gCal");
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 
-const calendarId =
-  "f1v.co_tthcm1hbtv21rlpaso7pliirmo@group.calendar.google.com";
 const keyFile = "credentials.json";
 const scopes = [
   "https://www.googleapis.com/auth/calendar",
@@ -32,11 +43,8 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const client = new WebClient();
-const spreadsheetId = "1X-503RbzfMhGhNoyyNe_Vu4R0c-c03r249YobxZ6OPM";
-const apiKey = "AIzaSyAGrbR6jSnhK8X_zkb3XH29PS3ag35pJGE";
 
-const totalSickDays = 5;
-const totalVacationDays = 20;
+// Slack things
 
 async function findConversation(name) {
   try {
@@ -57,7 +65,7 @@ async function findConversation(name) {
 
 async function publishMessage(channel, text) {
   try {
-    const foundChannel = await findConversation(channel);
+    const foundChannel = await findConversation(channel, app);
     const result = await app.client.chat.postMessage({
       token: process.env.SLACK_BOT_TOKEN,
       channel: foundChannel,
@@ -68,79 +76,27 @@ async function publishMessage(channel, text) {
   }
 }
 
-async function getAllData(realName) {
-  const sheets = google.sheets({
-    version: "v4",
-    auth
-  });
-  const data = await sheets.spreadsheets.values.get({
-    spreadsheetId: spreadsheetId,
-    range: "2020 Staff Vacations!A5:F16"
-  });
-
-  // console.log('yo', sheets.spreadsheets.values.get(
-  //   {
-  //     spreadsheetId: spreadsheetId,
-  //     range: "2020 Staff Vacations!A5:F16"
-  //   },
-  //   (err, res) => {
-  //     if (err) {
-  //       return console.log("You are an idiot: " + err);
-  //     }
-  //     return res.data.values;
-  //   }
-  // ));
-  return data;
+function publishTestMessage(text) {
+  return publishMessage("hrbot-tests", text);
 }
 
-async function getRow(realName) {
-  // const sheets = google.sheets({ version: "v4", auth });
-  // sheets.spreadsheets.get({
-  //   spreadsheetId: spreadsheetId,
-  // }, (err, res) => {
-  //     if (err) {
-  //       return console.log("You are an idiot 2: " + err);
-  //     }
-  //     // console.log(res.data);
-  //     // console.log('here', _.find(res.data.sheets, {properties: {'title': '2020 Staff Vacations'}}, null).values);
-  //     // return res.data.values[0];
-  //   })
-  const allData = await getAllData(realName);
-  const row = allData.data.values.filter(arr => arr[0].includes(realName));
-  return row.flat();
+async function messageUser(userId, message, app) {
+  await app.client.chat.postMessage({
+    token: process.env.SLACK_BOT_TOKEN,
+    channel: userId,
+    text: message
+  });
 }
 
-async function createEvent(username) {
-  const event = {
-    end: {
-      date: "2021-01-14"
-    },
-    start: {
-      date: "2021-01-14"
-    },
-    description: "Covid 19",
-    summary: `${username} - Sick Leave`
-  };
-  const calendar = google.calendar({
-    version: "v3",
-    auth
+async function findUser(userId) {
+  const author = await client.users.info({
+    user: userId,
+    token: process.env.SLACK_BOT_TOKEN
   });
-  calendar.events.insert({
-      auth,
-      calendarId,
-      resource: event
-    },
-    function (err, event) {
-      if (err) {
-        console.log(
-          "There was an error contacting the Calendar service: " + err
-        );
-        return;
-      }
-      console.log("Event created yo");
-    }
-  );
+  return author.user.profile.real_name;
 }
+
+// interactions
 
 app.event("app_mention", async ({
   event
@@ -161,67 +117,73 @@ app.event("app_mention", async ({
       "tea",
       "time",
       "paymo",
+      "timesheet",
       "help",
-      "me"
+      "who"
     ];
 
     if (hrTopics.some(r => text.split(" ").includes(r))) {
       const combined = [hrTopics, text.split(" ")].flat();
       const word = combined.filter((w, i) => combined.indexOf(w) !== i && w);
-      const author = await client.users.info({
-        user: event.user,
-        token: process.env.SLACK_BOT_TOKEN
-      });
-      const username = author.user.profile.real_name;
+      const username = await findUser(event.user);
 
-      if (word == "me") {
-        publishMessage("hrbot-tests", `author: ${username}`);
-      } else if (word == "sick") {
+      if (word == "sick") {
         if (text.includes("many")) {
-          const row = await getRow(username);
-          publishMessage(
-            "hrbot-tests",
-            `You have ${totalSickDays - row[5]} sick day(s) remaining`
-          );
+          const sickDays = await getSickDays(username, auth);
+          console.log("sick", sickDays);
+          publishTestMessage(`You have ${sickDays} sick day(s) remaining`);
         } else if (text.includes("set")) {
-          await createEvent(username);
-          publishMessage("hrbot-tests", "Your sick day has been set");
+          createSickDayEvent(username, auth);
+          publishTestMessage("Your sick day has been set");
         } else {
-          publishMessage(
-            "hrbot-tests",
+          publishTestMessage(
             "You can see how many sick days you have left or set a sick day by asking me"
           );
         }
       } else if (word == "vacation") {
         if (text.includes("many")) {
-          const row = await getRow(username);
-          publishMessage(
-            "hrbot-tests",
-            `You have ${totalVacationDays - row[4]} vacation day(s) remaining`
+          const vacationDays = await getVacationDays(username, auth);
+          publishTestMessage(
+            `You have ${vacationDays} vacation day(s) remaining`
           );
         } else if (text.includes("set")) {
-          publishMessage("hrbot-tests", "Set a vacation day");
+          createVacationDayEvent(username, auth);
+          publishTestMessage("Your vacation day has been set");
         } else {
-          publishMessage(
-            "hrbot-tests",
+          publishTestMessage(
             "You can see how many vacation days you have left or set a vacation day by asking me"
           );
         }
       } else if ((word == "holiday") | (word == "holidays")) {
-        publishMessage("hrbot-tests", "Holidays");
+        // two posts
+        // at 4:30pm night before check calendar for holiday and make post
+        // at 9:00am check calendar for holiday and make post
+        publishTestMessage("Holidays");
       } else if (word == "birthday") {
-        publishMessage("hrbot-tests", "Birthdays");
+        // at 9:00am check calendar for birthday and make post
+        publishTestMessage("Birthdays");
       } else if (word == "tea") {
-        publishMessage("hrbot-tests", "Tea");
-      } else if (word == "time" || word == "paymo" || word == "hours") {
-        publishMessage("hrbot-tests", "Paymo");
+        // Post video on tea
+        publishTestMessage("Tea");
       } else if (word == "poke") {
-        publishMessage("hrbot-tests", "poke");
-      }
+        // Send an HR-approved poke to a friend
+        publishTestMessage("poke");
+      } else if (word == "paymo") {
+        if (text.includes("timesheet")) {
+          requestTimesheet(username);
+        } else if (text.includes("tasks")) {
+          requestPaymo(username);
+        } else {
+          publishTestMessage(
+            "To add time to your Paymo timesheet, please type `@hrbot paymo timesheet | <taskId>`. If you're not sure of your taskId, please type `@hrbot paymo tasks` for a list."
+          );
+        }
+      } else if (word == "timesheet") {}
     } else {
-      publishMessage(
-        "hrbot-tests",
-        `Sorry, I may not be able to help you with that. Try asking me something about... ${hrTopics}`
+      publishTestMessage(
+        `Sorry, I may not be able to help you with that. These are the topics I have information on: ${hrTopics.join(
+          ", "
+        )}`
       );
     }
   } catch (error) {
