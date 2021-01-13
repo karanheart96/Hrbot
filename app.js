@@ -73,8 +73,6 @@ async function getName() {
       if (err) {
         return console.log("You are an idiot: " + err);
       }
-      // console.log(res.data.values.flat().find('Alex Braun'));
-      // console.log(res.data);
       return res.data.values[0];
     }
   );
@@ -153,7 +151,6 @@ function getDate() {
     mm = "0" + mm;
   }
   today = yyyy + "-" + mm + "-" + dd;
-  console.log(today);
   return today;
 }
 
@@ -180,7 +177,6 @@ app.event("app_mention", async ({ event }) => {
         user: event.user,
         token: process.env.SLACK_BOT_TOKEN,
       });
-      console.log("author", author);
       if (word == "me") {
         publishMessage(
           "hrbot-tests",
@@ -200,12 +196,9 @@ app.event("app_mention", async ({ event }) => {
             );
             publishMessage("hrbot-tests", "Your Sick day has been set");
           } else {
-            console.log(spl);
-            console.log("inside many");
             var parts = spl[4].split("-");
             var addEnd = parseInt(parts[2]) + 1;
             var end = parts[0] + "-" + parts[1] + "-" + addEnd;
-            console.log(end);
             await createManyEvent(
               author.user.profile.real_name + " - Sick",
               spl[3],
@@ -234,12 +227,9 @@ app.event("app_mention", async ({ event }) => {
             );
             publishMessage("hrbot-tests", "Your Vacation day has been set");
           } else {
-            console.log(spl);
-            console.log("inside many");
             var parts = spl[4].split("-");
             var addEnd = parseInt(parts[2]) + 1;
             var end = parts[0] + "-" + parts[1] + "-" + addEnd;
-            console.log(end);
             await createManyEvent(
               author.user.profile.real_name + " - Beach",
               spl[3],
