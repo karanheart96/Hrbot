@@ -1,60 +1,35 @@
-const {
-  App
-} = require("@slack/bolt");
-const {
-  WebClient
-} = require("@slack/web-api");
-const {
-  google
-} = require("googleapis");
-const {
-  _
-} = require("lodash");
-const request = require("request");
-const {
-  requestPaymo,
-  requestHours,
-  requestTimesheet
-} = require("./paymo");
-const {
-  getSickDays,
-  getVacationDays
-} = require("./gSheet");
-const {
-  createSickDayEvent,
-  createVacationDayEvent
-} = require("./gCal");
-
+const { App } = require("@slack/bolt");
+const { WebClient, LogLevel } = require("@slack/web-api");
+const { google } = require("googleapis");
+//const { _ } = require("lodash");
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
-  signingSecret: process.env.SLACK_SIGNING_SECRET
+  signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
-
+const calendarId =
+  "f1v.co_tthcm1hbtv21rlpaso7pliirmo@group.calendar.google.com";
 const keyFile = "credentials.json";
 const scopes = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/calendar.events",
-  "https://www.googleapis.com/auth/spreadsheets"
+  "https://www.googleapis.com/auth/spreadsheets",
 ];
-
 const auth = new google.auth.GoogleAuth({
   keyFile,
-  scopes
+  scopes,
 });
-
 const client = new WebClient();
-
-// Slack things
-
+const spreadsheetId = "1X-503RbzfMhGhNoyyNe_Vu4R0c-c03r249YobxZ6OPM";
+const apiKey = "AIzaSyAGrbR6jSnhK8X_zkb3XH29PS3ag35pJGE";
 async function findConversation(name) {
   try {
     const result = await app.client.conversations.list({
-      token: process.env.SLACK_BOT_TOKEN
+      token: process.env.SLACK_BOT_TOKEN,
     });
-
     for (const channel of result.channels) {
       if (channel.name === name) {
         const conversationId = await channel.id;
+        console.log("Found conversation ID: " + conversationId);
         return conversationId;
       }
     }
@@ -62,51 +37,143 @@ async function findConversation(name) {
     console.error(error);
   }
 }
-
 async function publishMessage(channel, text) {
   try {
-    const foundChannel = await findConversation(channel, app);
+    const foundChannel = await findConversation(channel);
     const result = await app.client.chat.postMessage({
       token: process.env.SLACK_BOT_TOKEN,
       channel: foundChannel,
-      text: text
+      text: text,
     });
   } catch (error) {
     console.error(error);
   }
 }
-
-function publishTestMessage(text) {
-  return publishMessage("hrbot-tests", text);
+async function getName() {
+  const sheets = google.sheets({ version: "v4", auth });
+  sheets.spreadsheets.get(
+    {
+      spreadsheetId: spreadsheetId,
+    },
+    (err, res) => {
+      if (err) {
+        return console.log("You are an idiot 2: " + err);
+      }
+      // console.log(res.data.values.flat().find('Alex Braun'));
+      // console.log('here', _.find(res.data.sheets, {properties: {'title': '2020 Staff Vacations'}}, null));
+      // return res.data.values[0];
+    }
+  );
+  sheets.spreadsheets.values.get(
+    {
+      spreadsheetId: spreadsheetId,
+      range: "2020 Staff Vacations!A5:A16",
+    },
+    (err, res) => {
+      if (err) {
+        return console.log("You are an idiot: " + err);
+      }
+      // console.log(res.data.values.flat().find('Alex Braun'));
+      // console.log(res.data);
+      return res.data.values[0];
+    }
+  );
+}
+async function createSickLeave(username) {
+  console.log("doing anything");
+  const event = {
+    end: {
+      date: "2021-01-14",
+    },
+    start: {
+      date: "2021-01-14",
+    },
+    description: "Covid 19",
+    summary: `${username} - Sick Leave`,
+  };
+  const calendar = google.calendar({ version: "v3", auth });
+  calendar.events.insert(
+    {
+      auth,
+      calendarId,
+      resource: event,
+    },
+    function (err, event) {
+      if (err) {
+        console.log(
+          "There was an error contacting the Calendar service: " + err
+        );
+        return;
+      }
+      console.log("Event created: %s", ...event);
+    }
+  );
 }
 
-async function messageUser(userId, message, app) {
-  await app.client.chat.postMessage({
-    token: process.env.SLACK_BOT_TOKEN,
-    channel: userId,
-    text: message
-  });
+async function createVacation(username) {
+  console.log("doing anything");
+  const event = {
+    end: {
+      date: "2021-01-15",
+    },
+    start: {
+      date: "2021-01-15",
+    },
+    description: "Beach",
+    summary: `${username} - Vacation`,
+  };
+  const calendar = google.calendar({ version: "v3", auth });
+  calendar.events.insert(
+    {
+      auth,
+      calendarId,
+      resource: event,
+    },
+    function (err, event) {
+      if (err) {
+        console.log(
+          "There was an error contacting the Calendar service: " + err
+        );
+        return;
+      }
+      console.log("Event created: %s", ...event);
+    }
+  );
 }
 
-async function findUser(userId) {
-  const author = await client.users.info({
-    user: userId,
-    token: process.env.SLACK_BOT_TOKEN
-  });
-  return author.user.profile.real_name;
+async function createManyVacation(username, start, end) {
+  console.log("doing anything");
+  const event = {
+    end: {
+      date: `${end}`,
+    },
+    start: {
+      date: `${start}`,
+    },
+    description: "Beach",
+    summary: `${username} - Vacation`,
+  };
+  const calendar = google.calendar({ version: "v3", auth });
+  calendar.events.insert(
+    {
+      auth,
+      calendarId,
+      resource: event,
+    },
+    function (err, event) {
+      if (err) {
+        console.log(
+          "There was an error contacting the Calendar service: " + err
+        );
+        return;
+      }
+      console.log("Event created: %s", ...event);
+    }
+  );
 }
-
-// interactions
-
-app.event("app_mention", async ({
-  event
-}) => {
+app.event("app_mention", async ({ event }) => {
   try {
-    const {
-      text,
-      user
-    } = event;
-
+    const { text, user } = event;
     const hrTopics = [
       "sick",
       "vacation",
@@ -117,82 +184,89 @@ app.event("app_mention", async ({
       "tea",
       "time",
       "paymo",
-      "timesheet",
       "help",
-      "who"
+      "me",
     ];
-
-    if (hrTopics.some(r => text.split(" ").includes(r))) {
+    if (hrTopics.some((r) => text.split(" ").includes(r))) {
       const combined = [hrTopics, text.split(" ")].flat();
       const word = combined.filter((w, i) => combined.indexOf(w) !== i && w);
-      const username = await findUser(event.user);
-
-      if (word == "sick") {
+      const author = await client.users.info({
+        user: event.user,
+        token: process.env.SLACK_BOT_TOKEN,
+      });
+      console.log("author", author);
+      if (word == "me") {
+        publishMessage(
+          "hrbot-tests",
+          `author: ${author.user.profile.real_name}`
+        );
+      } else if (word == "sick") {
         if (text.includes("many")) {
-          const sickDays = await getSickDays(username, auth);
-          console.log("sick", sickDays);
-          publishTestMessage(`You have ${sickDays} sick day(s) remaining`);
+          publishMessage("hrbot-tests", "Sick days left");
         } else if (text.includes("set")) {
-          createSickDayEvent(username, auth);
-          publishTestMessage("Your sick day has been set");
+          console.log("reaching set");
+          await createSickLeave(author.user.profile.real_name);
+          publishMessage("hrbot-tests", "Your sick day has been set");
         } else {
-          publishTestMessage(
+          publishMessage(
+            "hrbot-tests",
             "You can see how many sick days you have left or set a sick day by asking me"
           );
         }
       } else if (word == "vacation") {
         if (text.includes("many")) {
-          const vacationDays = await getVacationDays(username, auth);
-          publishTestMessage(
-            `You have ${vacationDays} vacation day(s) remaining`
-          );
+          publishMessage("hrbot-tests", "Vacation days left");
         } else if (text.includes("set")) {
-          createVacationDayEvent(username, auth);
-          publishTestMessage("Your vacation day has been set");
+          const spl = text.split(" ");
+          if (spl.length == 3) {
+            await createVacation(author.user.profile.real_name);
+            publishMessage("hrbot-tests", "Your Vacation day has been set");
+          } else {
+            console.log(spl);
+            console.log("inside many");
+            var parts = spl[4].split("-");
+            var addEnd = parseInt(parts[2]) + 1;
+            var end = parts[0] + "-" + parts[1] + "-" + addEnd;
+            console.log(end);
+            await createManyVacation(
+              author.user.profile.real_name,
+              spl[3],
+              end
+            );
+            publishMessage("hrbot-tests", "Vacation days  set");
+          }
         } else {
-          publishTestMessage(
+          publishMessage(
+            "hrbot-tests",
             "You can see how many vacation days you have left or set a vacation day by asking me"
           );
         }
       } else if ((word == "holiday") | (word == "holidays")) {
-        // two posts
-        // at 4:30pm night before check calendar for holiday and make post
-        // at 9:00am check calendar for holiday and make post
-        publishTestMessage("Holidays");
+        publishMessage("hrbot-tests", "Holidays");
       } else if (word == "birthday") {
-        // at 9:00am check calendar for birthday and make post
-        publishTestMessage("Birthdays");
+        publishMessage("hrbot-tests", "Birthdays");
       } else if (word == "tea") {
-        // Post video on tea
-        publishTestMessage("Tea");
+        publishMessage("hrbot-tests", "Tea");
+      } else if (word == "time" || word == "paymo" || word == "hours") {
+        publishMessage("hrbot-tests", "Paymo");
       } else if (word == "poke") {
-        // Send an HR-approved poke to a friend
-        publishTestMessage("poke");
-      } else if (word == "paymo") {
-        if (text.includes("timesheet")) {
-          requestTimesheet(username);
-        } else if (text.includes("tasks")) {
-          requestPaymo(username);
-        } else {
-          publishTestMessage(
-            "To add time to your Paymo timesheet, please type `@hrbot paymo timesheet | <taskId>`. If you're not sure of your taskId, please type `@hrbot paymo tasks` for a list."
-          );
-        }
-      } else if (word == "timesheet") {}
+        publishMessage("hrbot-tests", "poke");
+      }
     } else {
-      publishTestMessage(
-        `Sorry, I may not be able to help you with that. These are the topics I have information on: ${hrTopics.join(
-          ", "
-        )}`
+      publishMessage(
+        "hrbot-tests",
+        `Sorry, I may not be able to help you with that. Try asking me something about... ${hrTopics}`
       );
     }
   } catch (error) {
     console.error(error);
   }
 });
+getName();
+//createManyVacation("karan","2021-01-18","2021-01-23");
 
+// createEvent();
 (async () => {
   await app.start(process.env.PORT || 3000);
-
   console.log("⚡️ Bolt app is running!");
 })();
