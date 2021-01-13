@@ -79,17 +79,16 @@ async function getName() {
     }
   );
 }
-async function createSickLeave(username) {
-  console.log("doing anything");
+async function createEvent(username, date, description) {
   const event = {
     end: {
-      date: "2021-01-14",
+      date: `${date}`,
     },
     start: {
-      date: "2021-01-14",
+      date: `${date}`,
     },
-    description: "Covid 19",
-    summary: `${username} - Sick Leave`,
+    description: `${description}`,
+    summary: `${username}`,
   };
   const calendar = google.calendar({ version: "v3", auth });
   calendar.events.insert(
@@ -110,39 +109,7 @@ async function createSickLeave(username) {
   );
 }
 
-async function createVacation(username) {
-  console.log("doing anything");
-  const event = {
-    end: {
-      date: "2021-01-15",
-    },
-    start: {
-      date: "2021-01-15",
-    },
-    description: "Beach",
-    summary: `${username} - Vacation`,
-  };
-  const calendar = google.calendar({ version: "v3", auth });
-  calendar.events.insert(
-    {
-      auth,
-      calendarId,
-      resource: event,
-    },
-    function (err, event) {
-      if (err) {
-        console.log(
-          "There was an error contacting the Calendar service: " + err
-        );
-        return;
-      }
-      console.log("Event created: %s", ...event);
-    }
-  );
-}
-
-async function createManyVacation(username, start, end) {
-  console.log("doing anything");
+async function createManyEvent(username, start, end, description) {
   const event = {
     end: {
       date: `${end}`,
@@ -150,8 +117,8 @@ async function createManyVacation(username, start, end) {
     start: {
       date: `${start}`,
     },
-    description: "Beach",
-    summary: `${username} - Vacation`,
+    description: `${description}`,
+    summary: `${username}`,
   };
   const calendar = google.calendar({ version: "v3", auth });
   calendar.events.insert(
@@ -171,6 +138,25 @@ async function createManyVacation(username, start, end) {
     }
   );
 }
+
+function getDate() {
+  var today = new Date();
+  var dd = today.getDate();
+
+  var mm = today.getMonth() + 1;
+  var yyyy = today.getFullYear();
+  if (dd < 10) {
+    dd = "0" + dd;
+  }
+
+  if (mm < 10) {
+    mm = "0" + mm;
+  }
+  today = yyyy + "-" + mm + "-" + dd;
+  console.log(today);
+  return today;
+}
+
 app.event("app_mention", async ({ event }) => {
   try {
     const { text, user } = event;
@@ -204,9 +190,30 @@ app.event("app_mention", async ({ event }) => {
         if (text.includes("many")) {
           publishMessage("hrbot-tests", "Sick days left");
         } else if (text.includes("set")) {
-          console.log("reaching set");
-          await createSickLeave(author.user.profile.real_name);
-          publishMessage("hrbot-tests", "Your sick day has been set");
+          const spl = text.split(" ");
+          if (spl.length == 3) {
+            const date = getDate();
+            await createEvent(
+              author.user.profile.real_name + " - Sick",
+              date,
+              "Covid 19"
+            );
+            publishMessage("hrbot-tests", "Your Sick day has been set");
+          } else {
+            console.log(spl);
+            console.log("inside many");
+            var parts = spl[4].split("-");
+            var addEnd = parseInt(parts[2]) + 1;
+            var end = parts[0] + "-" + parts[1] + "-" + addEnd;
+            console.log(end);
+            await createManyEvent(
+              author.user.profile.real_name + " - Sick",
+              spl[3],
+              end,
+              "Covid 19"
+            );
+            publishMessage("hrbot-tests", "Sick days  set");
+          }
         } else {
           publishMessage(
             "hrbot-tests",
@@ -219,7 +226,12 @@ app.event("app_mention", async ({ event }) => {
         } else if (text.includes("set")) {
           const spl = text.split(" ");
           if (spl.length == 3) {
-            await createVacation(author.user.profile.real_name);
+            const date = getDate();
+            await createEvent(
+              author.user.profile.real_name + " - Vacation",
+              date,
+              "Hawaii"
+            );
             publishMessage("hrbot-tests", "Your Vacation day has been set");
           } else {
             console.log(spl);
@@ -228,10 +240,11 @@ app.event("app_mention", async ({ event }) => {
             var addEnd = parseInt(parts[2]) + 1;
             var end = parts[0] + "-" + parts[1] + "-" + addEnd;
             console.log(end);
-            await createManyVacation(
-              author.user.profile.real_name,
+            await createManyEvent(
+              author.user.profile.real_name + " - Beach",
               spl[3],
-              end
+              end,
+              "beach"
             );
             publishMessage("hrbot-tests", "Vacation days  set");
           }
